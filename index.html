@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FociEredmények.hu – Élő futball app</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+  body { background: linear-gradient(160deg, #0b3d2e 0%, #062018 100%); min-height: 100vh; color: white; }
+
+  /* ===== FEJLÉC ===== */
+  header { background: rgba(13,79,56,0.95); padding: 18px 20px; text-align: center;
+           box-shadow: 0 4px 20px rgba(0,0,0,0.4); position: sticky; top: 0; z-index: 100; }
+  header h1 { font-size: 32px; letter-spacing: 1px; }
+  header h1 span { color: #ffcc00; }
+  .alcim { color: #9fd4b8; font-size: 13px; margin-top: 4px; }
+  .live-badge { display: inline-block; background: #e63946; color: white; padding: 5px 16px;
+                border-radius: 20px; font-size: 13px; font-weight: bold; margin-top: 10px; }
+  .live-badge::before { content: "● "; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0.25; } }
+
+  /* ===== NAVIGÁCIÓ / LIGA FÜLEK ===== */
+  nav { display: flex; justify-content: center; gap: 10px; padding: 15px; flex-wrap: wrap; }
+  nav button { background: rgba(255,255,255,0.1); color: white; border: 2px solid #1a6b4a;
+               padding: 10px 22px; border-radius: 30px; cursor: pointer; font-size: 15px;
+               font-weight: bold; transition: all 0.25s; }
+  nav button:hover { background: #1a6b4a; transform: translateY(-2px); }
+  nav button.aktiv { background: #ffcc00; color: #0b3d2e; border-color: #ffcc00; }
+
+  /* ===== KERESŐ ===== */
+  .kereso-wrap { text-align: center; padding: 5px 20px 15px; }
+  .kereso { width: 100%; max-width: 420px; padding: 12px 20px; border-radius: 30px; border: none;
+            font-size: 15px; outline: none; background: rgba(255,255,255,0.95); }
+
+  /* ===== TARTALOM ===== */
+  main { max-width: 950px; margin: 0 auto; padding: 10px 15px 60px; }
+
+  .statisztika { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                 gap: 12px; margin-bottom: 25px; }
+  .stat-kartya { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+                 border-radius: 12px; padding: 16px; text-align: center; backdrop-filter: blur(6px); }
+  .stat-kartya .szam { font-size: 30px; font-weight: bold; color: #ffcc00; }
+  .stat-kartya .felirat { font-size: 12px; color: #9fd4b8; margin-top: 4px; }
+
+  .league { background: white; color: #222; border-radius: 14px; margin-bottom: 25px;
+            overflow: hidden; box-shadow: 0 8px 25px rgba(0,0,0,0.35); }
+  .league-header { background: linear-gradient(90deg, #1a6b4a, #0d4f38); color: white;
+                   padding: 14px 20px; font-size: 18px; font-weight: bold;
+                   display: flex; justify-content: space-between; align-items: center; }
+  .league-header .darab { font-size: 12px; background: rgba(255,255,255,0.2);
+                          padding: 3px 10px; border-radius: 12px; }
+
+  .match { display: grid; grid-template-columns: 1fr 90px 1fr 80px;
+           align-items: center; padding: 13px 20px; border-bottom: 1px solid #eef2ef;
+           transition: background 0.15s; }
+  .match:last-child { border-bottom: none; }
+  .match:hover { background: #f0f8f3; }
+  .match.elo { background: #fff5f5; border-left: 4px solid #e63946; }
+  .home, .away { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .home { text-align: right; justify-content: flex-end; }
+  .away { text-align: left; }
+  .jel { width: 26px; height: 26px; border-radius: 50%; color: white; font-size: 11px;
+         font-weight: bold; display: flex; align-items: center; justify-content: center;
+         flex-shrink: 0; }
+  .score { background: #0d4f38; color: white; padding: 7px 12px; border-radius: 8px;
+           text-align: center; font-weight: bold; font-size: 15px; }
+  .match.elo .score { background: #e63946; animation: pulz 1.5s infinite; }
+  @keyframes pulz { 50% { transform: scale(1.06); } }
+  .status { text-align: center; font-size: 11px; color: #888; }
+  .status.live { color: #e63946; font-weight: bold; }
+
+  .demo-jelzes { background: #fff3cd; color: #856404; padding: 10px 20px; font-size: 13px;
+                 text-align: center; margin-bottom: 15px; border-radius: 10px; }
+
+  .loading, .error { text-align: center; padding: 50px; font-size: 18px; }
+  .spinner { display: inline-block; width: 44px; height: 44px; border: 5px solid rgba(255,255,255,0.2);
+             border-top-color: #ffcc00; border-radius: 50%; animation: forog 0.9s linear infinite; }
+  @keyframes forog { to { transform: rotate(360deg); } }
+
+  .updated { text-align: center; color: #9fd4b8; font-size: 12px; padding: 15px; }
+
+  /* ===== TABLA (rendezés) ===== */
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #0d4f38; color: white; padding: 10px; font-size: 12px; }
+  td { padding: 10px; text-align: center; border-bottom: 1px solid #eee; font-size: 14px; }
+  td.csapat { text-align: left; font-weight: 600; }
+
+  footer { text-align: center; padding: 25px; color: #6fa88c; font-size: 13px;
+           border-top: 1px solid rgba(255,255,255,0.1); }
+
+  @media (max-width: 600px) {
+    .match { grid-template-columns: 1fr 70px 1fr; font-size: 13px; }
+    .status { display: none; }
+    header h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚽ Foci<span>Eredmények</span>.hu</h1>
+  <div class="alcim">A legjobb élő futball eredmények – magyarul</div>
+  <div class="live-badge">ÉLŐ EREDMÉNYEK</div>
+</header>
+
+<nav id="nav">
+  <button class="aktiv" onclick="valtTab('meccsek')">📋 Meccsek</button>
+  <button onclick="valtTab('tabla')">📊 Tabella</button>
+</nav>
+
+<div class="kereso-wrap">
+  <input class="kereso" id="kereso" placeholder="🔍 Csapat keresése... (pl. Real, Arsenal)"
+         oninput="szur()">
+</div>
+
+<main>
+  <div class="statisztika" id="statisztika"></div>
+  <div class="demo-jelzes" id="demoJelzes" style="display:none">
+    ⚠️ Demo módban – az élő API adatok akkor jelennek meg, ha a kulcs működik (F12 → Console részletek)
+  </div>
+  <div id="tablaResz" style="display:none"></div>
+  <div class="loading" id="loading"><div class="spinner"></div><br><br>⏳ Eredmények betöltése...</div>
+  <div id="content"></div>
+  <div class="updated" id="updated"></div>
+</main>
+
+<footer>© 2025 FociEredmények.hu – Élő adatok: football-data.org<br>
+Készült 💚 szenvedéllyel</footer>
+
+<script>
+const API_KEY = "fb9f9c58c6df4928a062ca07a0148a59";
+
+const LIGAK = [
+  { kod: "CL", nev: "🏆 Bajnokok Ligája", rovid: "BL" },
+  { kod: "PL", nev: "🏆 Premier League", rovid: "EPL" },
+  { kod: "PD", nev: "🏆 La Liga", rovid: "LAL" },
+  { kod: "SA", nev: "🏆 Serie A", rovid: "SEA" },
+  { kod: "BL1", nev: "🏆 Bundesliga", rovid: "BUN" },
+  { kod: "FL1", nev: "🏆 Ligue 1", rovid: "LI1" }
+];
+
+// Csapat színek a kör jelzéshez
+const SZINEK = { "Real Madrid":"#f1f5f9x", "Barcelona":"#a50044", "Arsenal":"#ef0107",
+  "Chelsea":"#034694", "Liverpool":"#c8102e", "Man United":"#da291c", "Man City":"#6cabdd",
+  "Tottenham":"#132257", "Juventus":"#000000", "Inter":"#0068a8", "Milan":"#fb090b",
+  "Napoli":"#12a0d7", "Bayern":"#dc052d", "Dortmund":"#fde100", "PSG":"#004170",
+  "Marseille":"#2faee0", "Lyon":"#0d3b8c", "Atlético":"#cb3524", "Sevilla":"#d81920",
+  "Leicester":"#003090", "Newcastle":"#241f20", "Aston Villa":"#670e36" };
+
+function szin(nev) {
+  for (const kulcs in SZINEK) if (nev.includes(kulcs)) return SZINEK[kulcs];
+  const paletta = ["#1a6b4a","#0d4f38","#5b3a8c","#b3572a","#2b6777","#8c3a5b"];
+  return paletta[nev.length % paletta.length];
+}
+function jel(nev) { return '<div class="jel" style="background:'+szin(nev)+'">'
+  + nev.slice(0,2).toUpperCase() + '</div>'; }
+
+// ===== DEMO ADATOK (ha az API nem megy) =====
+const DEMO = {
+  CL: [ ["Real Madrid","Man City",2,1], ["Bayern","PSG",3,1], ["Inter","Arsenal",1,0],
+        ["Barcelona","Dortmund",4,2] ],
+  PL: [ ["Arsenal","Chelsea",3,1], ["Liverpool","Man United",2,2],
+        ["Man City","Tottenham",1,0], ["Newcastle","Aston Villa",2,1] ],
+  PD: [ ["
+
+> ⚠️ The response reached the length limit. Reply **continue** to get the rest.
